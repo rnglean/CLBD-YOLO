@@ -5,6 +5,26 @@ from ultralytics.utils.tal import bbox2dist
 from .mpdiou import bbox_mpdiou
 
 
+def build_mpdiou_hw(imgsz, stride_tensor, batch_size):
+    """
+    Build the normalization term used by MPDIoU.
+
+    Args:
+        imgsz: Input image size tensor [height, width].
+        stride_tensor: Stride corresponding to each anchor point.
+        batch_size: Training batch size.
+
+    Returns:
+        Tensor used as mpdiou_hw in MPDIoU loss.
+    """
+    return (
+        (imgsz[0] ** 2 + imgsz[1] ** 2)
+        / torch.square(stride_tensor)
+    ).repeat(1, batch_size).transpose(1, 0)
+
+
+
+
 class DFLoss(nn.Module):
     """Distribution Focal Loss."""
 
