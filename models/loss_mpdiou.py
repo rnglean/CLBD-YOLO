@@ -99,3 +99,30 @@ class BboxLossMPDIoU(nn.Module):
             loss_dfl = torch.tensor(0.0, device=pred_dist.device)
 
         return loss_iou, loss_dfl
+
+# Integration with Ultralytics:
+#
+# In ultralytics/utils/loss.py, replace:
+#
+#     self.bbox_loss = BboxLoss(m.reg_max).to(device)
+#
+# with:
+#
+#     self.bbox_loss = BboxLossMPDIoU(m.reg_max).to(device)
+#
+# During training, build mpdiou_hw as:
+#
+#     mpdiou_hw = build_mpdiou_hw(imgsz, stride_tensor, batch_size)
+#
+# and pass it to the bounding-box loss:
+#
+#     loss[0], loss[2] = self.bbox_loss(
+#         pred_distri,
+#         pred_bboxes,
+#         anchor_points,
+#         target_bboxes,
+#         target_scores,
+#         target_scores_sum,
+#         fg_mask,
+#         mpdiou_hw,
+#     )
