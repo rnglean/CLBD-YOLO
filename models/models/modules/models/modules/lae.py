@@ -1,0 +1,48 @@
+import torch
+import torch.nn as nn
+from einops import rearrange
+
+from ultralytics.nn.modules.conv import Conv
+
+
+class LAE(nn.Module):
+    """Light-weight Adaptive Extraction."""
+
+    def __init__(self, ch, group=16):
+        super().__init__()
+
+        self.softmax = nn.Softmax(dim=-1)
+
+        self.attention = nn.Sequential(
+            nn.AvgPool2d(kernel_size=3, stride=1, padding=1),
+            Conv(ch, ch, k=1)
+        )
+
+        self.ds_conv = Conv(
+            ch,
+            ch * 4,
+            k=3,
+            s=2,
+            g=(ch // group)
+        )
+
+    def forward(self, x):
+        # bs, ch, 2h, 2w -> bs, ch, h, w, 4
+        att = rearrange(
+            self.attention(x),
+            'bs ch (s1 h) (s2 w) -> bs ch h w (s1 s2)',
+            s1=2,
+            s2=2
+        )
+        att = self.softmax(att)
+
+        # bs, 4ch, h, w -> bs, ch, h, w, 4
+        x = rearrange(
+            self.ds_conv(x),
+            'bs (s ch) h w -> bs ch h w s',
+            s=4
+        )
+
+        x = torch.sum(x * att, dim=-1)
+
+        return x
